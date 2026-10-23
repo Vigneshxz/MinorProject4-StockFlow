@@ -1,0 +1,239 @@
+
+@page "/categories"
+@rendermode InteractiveServer
+@using MinorProject4.Data
+@inject CategoryRepository CategoryRepo
+
+<PageTitle>Categories - StockFlow</PageTitle>
+
+<h3>Categories</h3>
+<p>Manage product categories in StockFlow.</p>
+
+<h4>Add New Category</h4>
+
+<div class="mb-3">
+    <label>Category Name</label>
+    <input class="form-control"
+           @bind="newCategory.CategoryName" />
+</div>
+
+<div class="mb-3">
+    <label>Description</label>
+    <input class="form-control"
+           @bind="newCategory.Description" />
+</div>
+
+<button class="btn btn-primary" @onclick="AddCategory">
+    Add Category
+</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p class="mt-3">@message</p>
+}
+
+<hr />
+
+@if (editingCategory != null)
+{
+    <h4>Edit Category</h4>
+
+    <div class="mb-3">
+        <label>Category Name</label>
+        <input class="form-control"
+               @bind="editingCategory.CategoryName" />
+    </div>
+
+    <div class="mb-3">
+        <label>Description</label>
+        <input class="form-control"
+               @bind="editingCategory.Description" />
+    </div>
+
+    <button class="btn btn-success" @onclick="SaveEdit">
+        Save Changes
+    </button>
+
+    <button class="btn btn-secondary ms-2"
+            @onclick="CancelEdit">
+        Cancel
+    </button>
+
+    <hr />
+}
+
+@if (deletingCategory != null)
+{
+    <div class="alert alert-warning">
+        <p>
+            Are you sure you want to delete
+            <strong>@deletingCategory.CategoryName</strong>?
+        </p>
+
+        <button class="btn btn-danger" @onclick="ConfirmDelete">
+            Yes, Delete
+        </button>
+
+        <button class="btn btn-secondary ms-2"
+                @onclick="CancelDelete">
+            Cancel
+        </button>
+    </div>
+}
+
+@if (categories == null)
+{
+    <p>Loading categories...</p>
+}
+else
+{
+    <p>Total Categories: @categories.Count</p>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Category Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var category in categories)
+            {
+                <tr>
+                    <td>@category.CategoryId</td>
+                    <td>@category.CategoryName</td>
+                    <td>@category.Description</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm"
+                                @onclick="() => StartEdit(category)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-danger btn-sm ms-2"
+                                @onclick="() => StartDelete(category)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Category>? categories;
+
+    private Category newCategory = new Category();
+    private Category? editingCategory;
+    private Category? deletingCategory;
+
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await CategoryRepo.GetAllAsync();
+    }
+
+    private async Task AddCategory()
+    {
+        if (string.IsNullOrWhiteSpace(newCategory.CategoryName))
+        {
+            message = "Please enter a category name.";
+            return;
+        }
+
+        try
+        {
+            await CategoryRepo.AddAsync(newCategory);
+
+            newCategory = new Category();
+            categories = await CategoryRepo.GetAllAsync();
+
+            message = "Category added successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not add category.";
+        }
+    }
+
+    private void StartEdit(Category category)
+    {
+        editingCategory = new Category
+        {
+            CategoryId = category.CategoryId,
+            CategoryName = category.CategoryName,
+            Description = category.Description
+        };
+
+        message = "";
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingCategory == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(editingCategory.CategoryName))
+        {
+            message = "Please enter a category name.";
+            return;
+        }
+
+        try
+        {
+            await CategoryRepo.UpdateAsync(editingCategory);
+
+            editingCategory = null;
+            categories = await CategoryRepo.GetAllAsync();
+
+            message = "Category updated successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not update category.";
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingCategory = null;
+        message = "";
+    }
+
+    private void StartDelete(Category category)
+    {
+        deletingCategory = category;
+        message = "";
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (deletingCategory == null)
+            return;
+
+        try
+        {
+            await CategoryRepo.DeleteAsync(deletingCategory.CategoryId);
+
+            deletingCategory = null;
+            categories = await CategoryRepo.GetAllAsync();
+
+            message = "Category deleted successfully!";
+        }
+        catch (Exception)
+        {
+            deletingCategory = null;
+            message = "Cannot delete category. It may be linked to products.";
+        }
+    }
+
+    private void CancelDelete()
+    {
+        deletingCategory = null;
+        message = "";
+    }
+}

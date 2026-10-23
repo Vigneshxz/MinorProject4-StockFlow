@@ -1,0 +1,125 @@
+
+@page "/admin"
+@rendermode InteractiveServer
+@using MinorProject4.Data
+@inject PurchaseOrderRepository OrderRepo
+
+<PageTitle>Admin - StockFlow</PageTitle>
+
+<h3>Administration</h3>
+
+<p>Manage purchase order statuses.</p>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p>@message</p>
+}
+
+@if (orders == null)
+{
+    <p>Loading purchase orders...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Supplier ID</th>
+                <th>Order Date</th>
+                <th>Status</th>
+                <th>Admin Action</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var order in orders)
+            {
+                <tr>
+                    <td>@order.OrderId</td>
+                    <td>@order.SupplierId</td>
+                    <td>@order.OrderDate.ToShortDateString()</td>
+                    <td>@order.Status</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm"
+                                @onclick="() => StartEdit(order)">
+                            Change Status
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (editingOrder != null)
+{
+    <hr />
+
+    <h4>Update Order #@editingOrder.OrderId</h4>
+
+    <label>New Status</label>
+
+    <select class="form-select mb-3" @bind="newStatus">
+        <option value="Pending">Pending</option>
+        <option value="Processing">Processing</option>
+        <option value="Shipped">Shipped</option>
+        <option value="Delivered">Delivered</option>
+        <option value="Cancelled">Cancelled</option>
+    </select>
+
+    <button class="btn btn-success" @onclick="SaveStatus">
+        Save Status
+    </button>
+
+    <button class="btn btn-secondary ms-2"
+            @onclick="CancelEdit">
+        Cancel
+    </button>
+}
+
+@code {
+    private List<PurchaseOrder>? orders;
+    private PurchaseOrder? editingOrder;
+    private string newStatus = "Pending";
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await OrderRepo.GetAllAsync();
+    }
+
+    private void StartEdit(PurchaseOrder order)
+    {
+        editingOrder = order;
+        newStatus = order.Status;
+        message = "";
+    }
+
+    private async Task SaveStatus()
+    {
+        if (editingOrder == null)
+            return;
+
+        try
+        {
+            await OrderRepo.UpdateStatusAsync(
+                editingOrder.OrderId, newStatus);
+
+            orders = await OrderRepo.GetAllAsync();
+            editingOrder = null;
+
+            message = "Order status updated successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not update order status.";
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingOrder = null;
+        message = "";
+    }
+}

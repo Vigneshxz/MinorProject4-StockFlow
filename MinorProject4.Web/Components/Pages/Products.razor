@@ -1,0 +1,353 @@
+
+@page "/products"
+@rendermode InteractiveServer
+@using MinorProject4.Data
+@inject ProductRepository ProductRepo
+
+<PageTitle>Products - StockFlow</PageTitle>
+
+<h3>StockFlow - Products</h3>
+
+<h4>Search Products</h4>
+
+<div class="mb-3">
+    <label>Product Name</label>
+    <input class="form-control"
+           @bind="searchName"
+           placeholder="Search by product name" />
+</div>
+
+<div class="mb-3">
+    <label>Brand</label>
+    <input class="form-control"
+           @bind="searchBrand"
+           placeholder="Search by brand" />
+</div>
+
+<button class="btn btn-primary" @onclick="SearchProducts">
+    Search
+</button>
+
+<button class="btn btn-secondary ms-2" @onclick="ClearSearch">
+    Show All
+</button>
+
+<hr />
+
+
+<p>Products currently stored in our MySQL database.</p>
+
+<h4>Add New Product</h4>
+
+<div class="mb-3">
+    <label>Product Name</label>
+    <input class="form-control" @bind="newProduct.ProductName" />
+</div>
+
+<div class="mb-3">
+    <label>Brand</label>
+    <input class="form-control" @bind="newProduct.Brand" />
+</div>
+
+<div class="mb-3">
+    <label>Price</label>
+    <input type="number" step="0.01"
+           class="form-control" @bind="newProduct.Price" />
+</div>
+
+<div class="mb-3">
+    <label>Quantity</label>
+    <input type="number"
+           class="form-control" @bind="newProduct.Quantity" />
+</div>
+
+<div class="mb-3">
+    <label>Category ID</label>
+    <input type="number"
+           class="form-control" @bind="newProduct.CategoryId" />
+</div>
+
+<div class="mb-3">
+    <label>Supplier ID</label>
+    <input type="number"
+           class="form-control" @bind="newProduct.SupplierId" />
+</div>
+
+<button class="btn btn-primary" @onclick="AddProduct">
+    Add Product
+</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p class="mt-2">@message</p>
+}
+
+<hr />
+
+@if (editingProduct != null)
+{
+    <h4>Edit Product</h4>
+
+    <div class="mb-3">
+        <label>Product Name</label>
+        <input class="form-control"
+               @bind="editingProduct.ProductName" />
+    </div>
+
+    <div class="mb-3">
+        <label>Brand</label>
+        <input class="form-control"
+               @bind="editingProduct.Brand" />
+    </div>
+
+    <div class="mb-3">
+        <label>Price</label>
+        <input type="number" step="0.01"
+               class="form-control"
+               @bind="editingProduct.Price" />
+    </div>
+
+    <div class="mb-3">
+        <label>Quantity</label>
+        <input type="number"
+               class="form-control"
+               @bind="editingProduct.Quantity" />
+    </div>
+
+    <div class="mb-3">
+        <label>Category ID</label>
+        <input type="number"
+               class="form-control"
+               @bind="editingProduct.CategoryId" />
+    </div>
+
+    <div class="mb-3">
+        <label>Supplier ID</label>
+        <input type="number"
+               class="form-control"
+               @bind="editingProduct.SupplierId" />
+    </div>
+
+    <button class="btn btn-success" @onclick="SaveEdit">
+        Save Changes
+    </button>
+
+    <button class="btn btn-secondary ms-2"
+            @onclick="CancelEdit">
+        Cancel
+    </button>
+
+    <hr />
+}
+
+@if (deletingProduct != null)
+{
+    <div class="alert alert-warning">
+        <p>
+            Are you sure you want to delete
+            <strong>@deletingProduct.ProductName</strong>?
+        </p>
+
+        <button class="btn btn-danger"
+                @onclick="ConfirmDelete">
+            Yes, Delete
+        </button>
+
+        <button class="btn btn-secondary ms-2"
+                @onclick="CancelDelete">
+            Cancel
+        </button>
+    </div>
+}
+
+@if (products == null)
+{
+    <p>Loading products...</p>
+}
+else
+{
+    <p>Total Products: @products.Count</p>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Product</th>
+                <th>Brand</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in products)
+            {
+                <tr>
+                    <td>@product.ProductId</td>
+                    <td>@product.ProductName</td>
+                    <td>@product.Brand</td>
+                    <td>@product.Price.ToString("C")</td>
+                    <td>@product.Quantity</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm"
+                                @onclick="() => StartEdit(product)">
+                            Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm ms-2"
+                                @onclick="() => StartDelete(product)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Product>? products;
+    private Product newProduct = new Product();
+    private Product? editingProduct;
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductRepo.GetAllAsync();
+    }
+
+    private async Task AddProduct()
+    {
+        if (string.IsNullOrWhiteSpace(newProduct.ProductName))
+        {
+            message = "Please enter a product name.";
+            return;
+        }
+
+        if (newProduct.Price < 0 ||
+            newProduct.Quantity < 0 ||
+            newProduct.CategoryId <= 0 ||
+            newProduct.SupplierId <= 0)
+        {
+            message = "Please enter valid product information.";
+            return;
+        }
+
+        try
+        {
+            await ProductRepo.AddAsync(newProduct);
+
+            newProduct = new Product();
+            products = await ProductRepo.GetAllAsync();
+
+            message = "Product added successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not add product. Check the Category and Supplier IDs.";
+        }
+    }
+
+    private void StartEdit(Product product)
+    {
+        editingProduct = new Product
+        {
+            ProductId = product.ProductId,
+            ProductName = product.ProductName,
+            Brand = product.Brand,
+            Price = product.Price,
+            Quantity = product.Quantity,
+            CategoryId = product.CategoryId,
+            SupplierId = product.SupplierId
+        };
+
+        message = "";
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingProduct == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(editingProduct.ProductName) ||
+            editingProduct.Price < 0 ||
+            editingProduct.Quantity < 0 ||
+            editingProduct.CategoryId <= 0 ||
+            editingProduct.SupplierId <= 0)
+        {
+            message = "Please enter valid product information.";
+            return;
+        }
+
+        try
+        {
+            await ProductRepo.UpdateAsync(editingProduct);
+
+            editingProduct = null;
+            products = await ProductRepo.GetAllAsync();
+
+            message = "Product updated successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not update product. Check the Category and Supplier IDs.";
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingProduct = null;
+        message = "";
+    }
+
+private Product? deletingProduct;
+
+private void StartDelete(Product product)
+{
+    deletingProduct = product;
+    message = "";
+}
+
+private async Task ConfirmDelete()
+{
+    if (deletingProduct == null)
+        return;
+
+    try
+    {
+        await ProductRepo.DeleteAsync(deletingProduct.ProductId);
+
+        deletingProduct = null;
+        products = await ProductRepo.GetAllAsync();
+
+        message = "Product deleted successfully!";
+    }
+    catch (Exception)
+    {
+        deletingProduct = null;
+        message = "Could not delete product. It may be used in a purchase order.";
+    }
+}
+
+private void CancelDelete()
+{
+    deletingProduct = null;
+    message = "";
+}
+
+private string searchName = "";
+private string searchBrand = "";
+
+private async Task SearchProducts()
+{
+    products = await ProductRepo.SearchAsync(
+        searchName.Trim(), searchBrand.Trim());
+}
+
+private async Task ClearSearch()
+{
+    searchName = "";
+    searchBrand = "";
+    products = await ProductRepo.GetAllAsync();
+}
+
+}

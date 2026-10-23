@@ -1,0 +1,254 @@
+
+@page "/suppliers"
+@rendermode InteractiveServer
+@using MinorProject4.Data
+@inject SupplierRepository SupplierRepo
+
+<PageTitle>Suppliers - StockFlow</PageTitle>
+
+<h3>Suppliers</h3>
+<p>Manage suppliers in the StockFlow database.</p>
+
+<h4>Add New Supplier</h4>
+
+<div class="mb-3">
+    <label>Supplier Name</label>
+    <input class="form-control"
+           @bind="newSupplier.SupplierName" />
+</div>
+
+<div class="mb-3">
+    <label>Email</label>
+    <input class="form-control"
+           @bind="newSupplier.Email" />
+</div>
+
+<div class="mb-3">
+    <label>Phone</label>
+    <input class="form-control"
+           @bind="newSupplier.Phone" />
+</div>
+
+<button class="btn btn-primary" @onclick="AddSupplier">
+    Add Supplier
+</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <p class="mt-3">@message</p>
+}
+
+<hr />
+
+@if (editingSupplier != null)
+{
+    <h4>Edit Supplier</h4>
+
+    <div class="mb-3">
+        <label>Supplier Name</label>
+        <input class="form-control"
+               @bind="editingSupplier.SupplierName" />
+    </div>
+
+    <div class="mb-3">
+        <label>Email</label>
+        <input class="form-control"
+               @bind="editingSupplier.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label>Phone</label>
+        <input class="form-control"
+               @bind="editingSupplier.Phone" />
+    </div>
+
+    <button class="btn btn-success" @onclick="SaveEdit">
+        Save Changes
+    </button>
+
+    <button class="btn btn-secondary ms-2"
+            @onclick="CancelEdit">
+        Cancel
+    </button>
+
+    <hr />
+}
+
+@if (deletingSupplier != null)
+{
+    <div class="alert alert-warning">
+        <p>
+            Are you sure you want to delete
+            <strong>@deletingSupplier.SupplierName</strong>?
+        </p>
+
+        <button class="btn btn-danger" @onclick="ConfirmDelete">
+            Yes, Delete
+        </button>
+
+        <button class="btn btn-secondary ms-2"
+                @onclick="CancelDelete">
+            Cancel
+        </button>
+    </div>
+}
+
+@if (suppliers == null)
+{
+    <p>Loading suppliers...</p>
+}
+else
+{
+    <p>Total Suppliers: @suppliers.Count</p>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Supplier Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var supplier in suppliers)
+            {
+                <tr>
+                    <td>@supplier.SupplierId</td>
+                    <td>@supplier.SupplierName</td>
+                    <td>@supplier.Email</td>
+                    <td>@supplier.Phone</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm"
+                                @onclick="() => StartEdit(supplier)">
+                            Edit
+                        </button>
+
+                        <button class="btn btn-danger btn-sm ms-2"
+                                @onclick="() => StartDelete(supplier)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Supplier>? suppliers;
+
+    private Supplier newSupplier = new Supplier();
+    private Supplier? editingSupplier;
+    private Supplier? deletingSupplier;
+
+    private string message = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await SupplierRepo.GetAllAsync();
+    }
+
+    private async Task AddSupplier()
+    {
+        if (string.IsNullOrWhiteSpace(newSupplier.SupplierName))
+        {
+            message = "Please enter a supplier name.";
+            return;
+        }
+
+        try
+        {
+            await SupplierRepo.AddAsync(newSupplier);
+
+            newSupplier = new Supplier();
+            suppliers = await SupplierRepo.GetAllAsync();
+
+            message = "Supplier added successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not add supplier.";
+        }
+    }
+
+    private void StartEdit(Supplier supplier)
+    {
+        editingSupplier = new Supplier
+        {
+            SupplierId = supplier.SupplierId,
+            SupplierName = supplier.SupplierName,
+            Email = supplier.Email,
+            Phone = supplier.Phone
+        };
+
+        message = "";
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingSupplier == null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(editingSupplier.SupplierName))
+        {
+            message = "Please enter a supplier name.";
+            return;
+        }
+
+        try
+        {
+            await SupplierRepo.UpdateAsync(editingSupplier);
+
+            editingSupplier = null;
+            suppliers = await SupplierRepo.GetAllAsync();
+
+            message = "Supplier updated successfully!";
+        }
+        catch (Exception)
+        {
+            message = "Could not update supplier.";
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingSupplier = null;
+        message = "";
+    }
+
+    private void StartDelete(Supplier supplier)
+    {
+        deletingSupplier = supplier;
+        message = "";
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (deletingSupplier == null)
+            return;
+
+        try
+        {
+            await SupplierRepo.DeleteAsync(deletingSupplier.SupplierId);
+
+            deletingSupplier = null;
+            suppliers = await SupplierRepo.GetAllAsync();
+
+            message = "Supplier deleted successfully!";
+        }
+        catch (Exception)
+        {
+            deletingSupplier = null;
+            message = "Cannot delete supplier. It may be linked to products or orders.";
+        }
+    }
+
+    private void CancelDelete()
+    {
+        deletingSupplier = null;
+        message = "";
+    }
+}

@@ -1,0 +1,122 @@
+﻿
+@page "/"
+@rendermode InteractiveServer
+@using MinorProject4.Data
+@inject ProductRepository ProductRepo
+@inject SupplierRepository SupplierRepo
+@inject CategoryRepository CategoryRepo
+@inject PurchaseOrderRepository OrderRepo
+
+<PageTitle>Dashboard - StockFlow</PageTitle>
+
+<h2>StockFlow Dashboard</h2>
+
+<p>Welcome to StockFlow! Manage your inventory, suppliers, categories, and purchase orders.</p>
+
+@if (loading)
+{
+    <p>Loading dashboard...</p>
+}
+else
+{
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6>Total Products</h6>
+                    <h2>@productCount</h2>
+                    <a href="/products">Manage Products</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6>Total Suppliers</h6>
+                    <h2>@supplierCount</h2>
+                    <a href="/suppliers">Manage Suppliers</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6>Total Categories</h6>
+                    <h2>@categoryCount</h2>
+                    <a href="/categories">Manage Categories</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6>Purchase Orders</h6>
+                    <h2>@orderCount</h2>
+                    <a href="/admin">Manage Orders</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <h4>Inventory Overview</h4>
+
+    <div class="row g-3">
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6>Low Stock Products</h6>
+                    <h2>@lowStockCount</h2>
+                    <p>Products with fewer than 10 units remaining.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6>Total Inventory Value</h6>
+                    <h2>@inventoryValue.ToString("C")</h2>
+                    <p>Estimated value of products currently in stock.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+}
+
+@code {
+    private bool loading = true;
+
+    private int productCount;
+    private int supplierCount;
+    private int categoryCount;
+    private int orderCount;
+    private int lowStockCount;
+
+    private decimal inventoryValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var products = await ProductRepo.GetAllAsync();
+        var suppliers = await SupplierRepo.GetAllAsync();
+        var categories = await CategoryRepo.GetAllAsync();
+        var orders = await OrderRepo.GetAllAsync();
+
+        productCount = products.Count;
+        supplierCount = suppliers.Count;
+        categoryCount = categories.Count;
+        orderCount = orders.Count;
+
+        lowStockCount = products.Count(p => p.Quantity < 10);
+
+        inventoryValue = products.Sum(p => p.Price * p.Quantity);
+
+        loading = false;
+    }
+}
